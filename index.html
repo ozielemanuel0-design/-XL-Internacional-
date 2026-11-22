@@ -1,0 +1,112 @@
+
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XL Internacional | Loja Online</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f5f6fa;color:#17213a}
+header{background:#101d42;color:white;padding:24px 18px}
+header h1{margin:0;font-size:25px;letter-spacing:1px}
+header p{color:#cbd5ee;margin:8px 0 0}
+.hero{padding:30px 20px;background:linear-gradient(135deg,#142653,#5936a8);color:white}
+.hero h2{font-size:27px;margin:0 0 10px}
+.hero p{line-height:1.5}
+.search{padding:16px}
+.search input{width:100%;padding:14px;border:1px solid #ddd;border-radius:10px;font-size:16px}
+h3{padding:0 16px;margin-top:20px}
+.categories{display:flex;gap:9px;overflow:auto;padding:0 16px}
+.categories button{border:0;padding:11px 15px;border-radius:20px;background:#e5e9f5;white-space:nowrap;color:#17213a}
+.categories button.active{background:#263d80;color:white}
+.products{display:grid;grid-template-columns:1fr 1fr;gap:13px;padding:15px}
+.product{background:white;border-radius:13px;padding:14px;box-shadow:0 2px 10px #0000000a}
+.picture{height:105px;border-radius:10px;background:#edf0f8;display:flex;align-items:center;justify-content:center;font-size:42px}
+.product h4{margin:12px 0 7px;font-size:15px}
+.product p{font-size:12px;color:#68738a;min-height:28px}
+.product button{width:100%;padding:11px;border:0;border-radius:8px;background:#243e83;color:white}
+footer{background:#101d42;color:white;padding:24px;text-align:center;margin-top:20px}
+.whatsapp{display:block;background:#159b59;color:white;text-decoration:none;text-align:center;padding:15px;margin:15px;border-radius:10px;font-weight:bold}
+.small{font-size:12px;color:#bbc7e3}
+</style>
+</head>
+<body>
+<header>
+<h1>XL INTERNACIONAL</h1>
+<p>A tua loja, sempre aberta.</p>
+</header>
+
+<section class="hero">
+<h2>Bem-vindo à XL Internacional!</h2>
+<p>Descubra os nossos produtos e encontre o que procura. Estamos no Lobito e em Benguela.</p>
+</section>
+
+<div class="search">
+<input id="search" placeholder="Pesquisar produtos..." oninput="render()">
+</div>
+
+<h3>Comprar por categoria</h3>
+<div class="categories">
+<button class="active" onclick="filter('Todos',this)">Todos</button>
+<button onclick="filter('Telefones',this)">Telefones</button>
+<button onclick="filter('Televisores',this)">Televisores</button>
+<button onclick="filter('Eletrodomésticos',this)">Eletrodomésticos</button>
+<button onclick="filter('Móveis',this)">Móveis</button>
+</div>
+
+<h3>Os nossos produtos</h3>
+<div class="products" id="products"></div>
+
+<a class="whatsapp" id="contact" href="#" onclick="contactStore(event)">Falar com a XL pelo WhatsApp</a>
+
+<footer>
+<strong>XL INTERNACIONAL</strong>
+<p>Lobito · Benguela</p>
+<p class="small">Qualidade, confiança e bom atendimento.</p>
+</footer>
+
+<script>
+const products=[
+{name:"Smartphones Xiaomi",category:"Telefones",icon:"📱"},
+{name:"Televisores",category:"Televisores",icon:"📺"},
+{name:"Eletrodomésticos",category:"Eletrodomésticos",icon:"🏠"},
+{name:"Móveis",category:"Móveis",icon:"🛋️"}
+];
+let current="Todos";
+
+function render(){
+const search=document.getElementById("search").value.toLowerCase();
+const list=products.filter(p=>
+(current==="Todos"||p.category===current)&&
+p.name.toLowerCase().includes(search)
+);
+document.getElementById("products").innerHTML=list.map(p=>`
+<div class="product">
+<div class="picture">${p.icon}</div>
+<h4>${p.name}</h4>
+<p>Consulte preços e disponibilidade.</p>
+<button onclick="ask('${p.name}')">Consultar produto</button>
+</div>`).join("");
+}
+function filter(category,button){
+current=category;
+document.querySelectorAll(".categories button").forEach(b=>b.classList.remove("active"));
+button.classList.add("active");
+render();
+}
+function ask(name){
+sendWhatsApp("Olá! Gostaria de saber os preços e a disponibilidade de: "+name);
+}
+function contactStore(event){
+event.preventDefault();
+sendWhatsApp("Olá! Gostaria de conhecer os produtos da XL Internacional.");
+}
+function sendWhatsApp(message){
+const number="244900000000";
+window.open("https://wa.me/"+number+"?text="+encodeURIComponent(message),"_blank");
+}
+render();
+</script>
+</body>
+</html>
