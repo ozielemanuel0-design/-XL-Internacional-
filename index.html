@@ -5,6 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>XL Internacional | Loja Online</title>
+
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#f5f6fa;color:#17213a}
@@ -22,16 +23,22 @@ h3{padding:0 16px;margin-top:20px}
 .categories button.active{background:#263d80;color:white}
 .products{display:grid;grid-template-columns:1fr 1fr;gap:13px;padding:15px}
 .product{background:white;border-radius:13px;padding:14px;box-shadow:0 2px 10px #0000000a}
-.picture{height:105px;border-radius:10px;background:#edf0f8;display:flex;align-items:center;justify-content:center;font-size:42px}
+.picture{height:105px;border-radius:10px;background:#edf0f8;display:flex;align-items:center;justify-content:center;font-size:42px;overflow:hidden}
+.picture img{width:100%;height:100%;object-fit:contain}
 .product h4{margin:12px 0 7px;font-size:15px}
 .product p{font-size:12px;color:#68738a;min-height:28px}
+.price{font-weight:bold;color:#243e83;font-size:15px}
+.stock{font-size:12px;color:#68738a}
 .product button{width:100%;padding:11px;border:0;border-radius:8px;background:#243e83;color:white}
 footer{background:#101d42;color:white;padding:24px;text-align:center;margin-top:20px}
 .whatsapp{display:block;background:#159b59;color:white;text-decoration:none;text-align:center;padding:15px;margin:15px;border-radius:10px;font-weight:bold}
 .small{font-size:12px;color:#bbc7e3}
+#status{text-align:center;padding:12px;font-size:13px;color:#68738a}
 </style>
 </head>
+
 <body>
+
 <header>
 <h1>XL INTERNACIONAL</h1>
 <p>A tua loja, sempre aberta.</p>
@@ -43,22 +50,25 @@ footer{background:#101d42;color:white;padding:24px;text-align:center;margin-top:
 </section>
 
 <div class="search">
-<input id="search" placeholder="Pesquisar produtos..." oninput="render()">
+<input id="search" placeholder="Pesquisar produtos...">
 </div>
 
 <h3>Comprar por categoria</h3>
 <div class="categories">
-<button class="active" onclick="filter('Todos',this)">Todos</button>
-<button onclick="filter('Telefones',this)">Telefones</button>
-<button onclick="filter('Televisores',this)">Televisores</button>
-<button onclick="filter('Eletrodomésticos',this)">Eletrodomésticos</button>
-<button onclick="filter('Móveis',this)">Móveis</button>
+<button class="active" data-category="Todos">Todos</button>
+<button data-category="Telefones">Telefones</button>
+<button data-category="Televisores">Televisores</button>
+<button data-category="Eletrodomésticos">Eletrodomésticos</button>
+<button data-category="Móveis">Móveis</button>
 </div>
 
 <h3>Os nossos produtos</h3>
+<div id="status">A carregar produtos...</div>
 <div class="products" id="products"></div>
 
-<a class="whatsapp" id="contact" href="#" onclick="contactStore(event)">Falar com a XL pelo WhatsApp</a>
+<a class="whatsapp" href="#" id="contact">
+Falar com a XL pelo WhatsApp
+</a>
 
 <footer>
 <strong>XL INTERNACIONAL</strong>
@@ -66,47 +76,158 @@ footer{background:#101d42;color:white;padding:24px;text-align:center;margin-top:
 <p class="small">Qualidade, confiança e bom atendimento.</p>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
-const products=[
-{name:"Smartphones Xiaomi",category:"Telefones",icon:"📱"},
-{name:"Televisores",category:"Televisores",icon:"📺"},
-{name:"Eletrodomésticos",category:"Eletrodomésticos",icon:"🏠"},
-{name:"Móveis",category:"Móveis",icon:"🛋️"}
-];
-let current="Todos";
+const SUPABASE_URL = "https://lxqiupenyytoskylypvt.supabase.co";
+
+const SUPABASE_KEY = "sb_publishable_1kJmqSKnVxlLvNLkPYeHGQ_se0leUtT";
+
+const db = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+
+const WHATSAPP_NUMBER = "244900000000";
+
+let products = [];
+let current = "Todos";
+
+function escapeHTML(value){
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#39;"
+  }[char]));
+}
+
+function normalizeCategory(category){
+  const value = (category || "").toLowerCase();
+
+  if(value.includes("telefone") || value.includes("telemóvel") || value.includes("smartphone")){
+    return "Telefones";
+  }
+  if(value.includes("televis")){
+    return "Televisores";
+  }
+  if(value.includes("eletrodomést") || value.includes("eletrodom")){
+    return "Eletrodomésticos";
+  }
+  if(value.includes("móvel") || value.includes("moveis") || value.includes("móveis")){
+    return "Móveis";
+  }
+
+  return category;
+}
+
+function formatPrice(price){
+  return Number(price).toLocaleString("pt-PT") + " Kz";
+}
+
+async function loadProducts(){
+  const status = document.getElementById("status");
+
+  try{
+    const {data, error} = await db
+      .from("products")
+      .select("id,name,category,description,price,stock,image_url")
+      .eq("active", true)
+      .order("created_at", {ascending:false});
+
+    if(error) throw error;
+
+    products = data || [];
+    status.textContent = products.length
+      ? ""
+      : "Ainda não existem produtos disponíveis.";
+
+    render();
+
+  }catch(error){
+    console.error("Erro ao carregar produtos:", error);
+    status.textContent = "Não foi possível carregar os produtos. Tente novamente.";
+  }
+}
 
 function render(){
-const search=document.getElementById("search").value.toLowerCase();
-const list=products.filter(p=>
-(current==="Todos"||p.category===current)&&
-p.name.toLowerCase().includes(search)
-);
-document.getElementById("products").innerHTML=list.map(p=>`
-<div class="product">
-<div class="picture">${p.icon}</div>
-<h4>${p.name}</h4>
-<p>Consulte preços e disponibilidade.</p>
-<button onclick="ask('${p.name}')">Consultar produto</button>
-</div>`).join("");
+  const search = document.getElementById("search").value.toLowerCase();
+
+  const list = products.filter(p => {
+    const category = normalizeCategory(p.category);
+    const text = (p.name + " " + (p.description || "")).toLowerCase();
+
+    return (current === "Todos" || category === current)
+      && text.includes(search);
+  });
+
+  const container = document.getElementById("products");
+
+  if(!list.length){
+    container.innerHTML = "";
+    return;
+  }
+
+  container.innerHTML = list.map(p => {
+    const picture = p.image_url
+      ? `<img src="${escapeHTML(p.image_url)}" alt="${escapeHTML(p.name)}">`
+      : "📦";
+
+    return `
+      <div class="product">
+        <div class="picture">${picture}</div>
+        <h4>${escapeHTML(p.name)}</h4>
+        <p>${escapeHTML(p.description || "Consulte os detalhes deste produto.")}</p>
+        <div class="price">${formatPrice(p.price)}</div>
+        <div class="stock">${Number(p.stock) > 0 ? "Disponível" : "Indisponível"}</div>
+        <button class="ask" data-name="${escapeHTML(p.name)}">
+          Consultar produto
+        </button>
+      </div>
+    `;
+  }).join("");
+
+  container.querySelectorAll(".ask").forEach(button => {
+    button.addEventListener("click", () => {
+      ask(button.dataset.name);
+    });
+  });
 }
-function filter(category,button){
-current=category;
-document.querySelectorAll(".categories button").forEach(b=>b.classList.remove("active"));
-button.classList.add("active");
-render();
-}
+
 function ask(name){
-sendWhatsApp("Olá! Gostaria de saber os preços e a disponibilidade de: "+name);
+  sendWhatsApp("Olá! Gostaria de saber mais sobre: " + name);
 }
-function contactStore(event){
-event.preventDefault();
-sendWhatsApp("Olá! Gostaria de conhecer os produtos da XL Internacional.");
-}
+
 function sendWhatsApp(message){
-const number="244900000000";
-window.open("https://wa.me/"+number+"?text="+encodeURIComponent(message),"_blank");
+  window.open(
+    "https://wa.me/" + WHATSAPP_NUMBER + "?text=" + encodeURIComponent(message),
+    "_blank"
+  );
 }
-render();
+
+document.getElementById("search").addEventListener("input", render);
+
+document.querySelectorAll(".categories button").forEach(button => {
+  button.addEventListener("click", () => {
+    current = button.dataset.category;
+
+    document.querySelectorAll(".categories button")
+      .forEach(b => b.classList.remove("active"));
+
+    button.classList.add("active");
+    render();
+  });
+});
+
+document.getElementById("contact").addEventListener("click", event => {
+  event.preventDefault();
+  sendWhatsApp("Olá! Gostaria de conhecer os produtos da XL Internacional.");
+});
+
+loadProducts();
 </script>
+
 </body>
 </html>
+
